@@ -9,9 +9,15 @@ It uses `ctypes` module to display dialogs and has no dependencies on `tkinter` 
 Function and argument names are almost the same as those of `tkinter`.
 I feel that it's easy to port code from `tkinter` to `wdlg`, and vice versa.
 
-## Example
+## Installation
 
 ```
+pip install wdlg
+```
+
+## Example
+
+```python
 # it's easy to port code from tkinter to wdlg.
 
 # from tkinter import filedialog
