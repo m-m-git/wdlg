@@ -15,6 +15,7 @@ from ctypes import c_uint32
 from ctypes import c_void_p
 from ctypes import c_wchar_p
 from ctypes import oledll
+from os.path import abspath
 from typing import Generator
 from typing import List
 from typing import Tuple
@@ -314,6 +315,7 @@ def askdirectory(hwnd: c_void_p = None, initialdir: str = None) -> str:
         pdlg.contents.lpVtbl.contents.SetOptions(pdlg, options.value | FOS_PICKFOLDERS)
 
         if initialdir:
+            initialdir = abspath(initialdir)
             with _get_pIShellItem() as pitem:
                 oledll.shell32.SHCreateItemFromParsingName(
                     initialdir, None, IID_IShellItem, byref(pitem)
@@ -354,6 +356,7 @@ def askopenfilename(
     """
     with _COM(), _get_pIFileOpenDialog() as pdlg:
         if initialdir:
+            initialdir = abspath(initialdir)
             with _get_pIShellItem() as pitem:
                 oledll.shell32.SHCreateItemFromParsingName(
                     initialdir, None, IID_IShellItem, byref(pitem)
@@ -410,6 +413,7 @@ def askopenfilenames(
         )
 
         if initialdir:
+            initialdir = abspath(initialdir)
             with _get_pIShellItem() as pitem:
                 oledll.shell32.SHCreateItemFromParsingName(
                     initialdir, None, IID_IShellItem, byref(pitem)
@@ -466,6 +470,7 @@ def asksaveasfilename(
     """
     with _COM(), _get_pIFileSaveDialog() as pdlg:
         if initialdir:
+            initialdir = abspath(initialdir)
             with _get_pIShellItem() as pitem:
                 oledll.shell32.SHCreateItemFromParsingName(
                     initialdir, None, IID_IShellItem, byref(pitem)
