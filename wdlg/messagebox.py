@@ -11,7 +11,6 @@ __all__ = [
     "askretrycancel",
     "askyesno",
     "askyesnocancel",
-    "taskdialog",
 ]
 from ctypes import POINTER
 from ctypes import byref
