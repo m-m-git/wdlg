@@ -60,10 +60,6 @@ class COMDLG_FILTERSPEC(Structure):
         ("pszSpec", c_wchar_p),
     ]
 
-    @staticmethod
-    def from_tuple(filetype: Tuple[str, str]) -> "COMDLG_FILTERSPEC":
-        return COMDLG_FILTERSPEC(filetype[0], filetype[1])
-
 
 class IFileOpenDialog(Structure):
     pass
@@ -374,7 +370,7 @@ def askopenfilename(
             if filetypes:
                 rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
                 for i, ft in enumerate(filetypes):
-                    rgSpec[i] = COMDLG_FILTERSPEC.from_tuple(ft)
+                    rgSpec[i] = COMDLG_FILTERSPEC(*ft)
                 pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
                 pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
 
@@ -431,7 +427,7 @@ def askopenfilenames(
             if filetypes:
                 rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
                 for i, ft in enumerate(filetypes):
-                    rgSpec[i] = COMDLG_FILTERSPEC.from_tuple(ft)
+                    rgSpec[i] = COMDLG_FILTERSPEC(*ft)
                 pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
                 pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
 
@@ -488,7 +484,7 @@ def asksaveasfilename(
             if filetypes:
                 rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
                 for i, ft in enumerate(filetypes):
-                    rgSpec[i] = COMDLG_FILTERSPEC.from_tuple(ft)
+                    rgSpec[i] = COMDLG_FILTERSPEC(*ft)
                 pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
                 pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
 
