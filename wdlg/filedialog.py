@@ -15,6 +15,7 @@ from ctypes import c_uint32
 from ctypes import c_void_p
 from ctypes import c_wchar_p
 from ctypes import oledll
+from os.path import abspath
 from typing import Generator
 from typing import List
 from typing import Tuple
@@ -59,10 +60,6 @@ class COMDLG_FILTERSPEC(Structure):
         ("pszName", c_wchar_p),
         ("pszSpec", c_wchar_p),
     ]
-
-    @staticmethod
-    def from_tuple(filetype: Tuple[str, str]) -> "COMDLG_FILTERSPEC":
-        return COMDLG_FILTERSPEC(filetype[0], filetype[1])
 
 
 class IFileOpenDialog(Structure):
@@ -312,33 +309,31 @@ def askdirectory(hwnd: c_void_p = None, initialdir: str = None) -> str:
     Returns:
         The directory path or None if cancel button selected.
     """
-    with _COM():
-        with _get_pIFileOpenDialog() as pdlg:
-            options = c_uint32()
-            pdlg.contents.lpVtbl.contents.GetOptions(pdlg, byref(options))
-            pdlg.contents.lpVtbl.contents.SetOptions(
-                pdlg, options.value | FOS_PICKFOLDERS
-            )
+    with _COM(), _get_pIFileOpenDialog() as pdlg:
+        options = c_uint32()
+        pdlg.contents.lpVtbl.contents.GetOptions(pdlg, byref(options))
+        pdlg.contents.lpVtbl.contents.SetOptions(pdlg, options.value | FOS_PICKFOLDERS)
 
-            if initialdir:
-                with _get_pIShellItem() as pitem:
-                    oledll.shell32.SHCreateItemFromParsingName(
-                        initialdir, None, IID_IShellItem, byref(pitem)
-                    )
-                    pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
-
-            try:
-                pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
-            except OSError:
-                return None
+        if initialdir:
+            initialdir = abspath(initialdir)
             with _get_pIShellItem() as pitem:
-                pfilepath = c_wchar_p()
-                pdlg.contents.lpVtbl.contents.GetResult(pdlg, byref(pitem))
-                pitem.contents.lpVtbl.contents.GetDisplayName(
-                    pitem, SIGDN_FILESYSPATH, byref(pfilepath)
+                oledll.shell32.SHCreateItemFromParsingName(
+                    initialdir, None, IID_IShellItem, byref(pitem)
                 )
-                ret = pfilepath.value
-                oledll.ole32.CoTaskMemFree(pfilepath)
+                pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
+
+        try:
+            pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
+        except OSError:
+            return None
+        with _get_pIShellItem() as pitem:
+            pfilepath = c_wchar_p()
+            pdlg.contents.lpVtbl.contents.GetResult(pdlg, byref(pitem))
+            pitem.contents.lpVtbl.contents.GetDisplayName(
+                pitem, SIGDN_FILESYSPATH, byref(pfilepath)
+            )
+            ret = pfilepath.value
+            oledll.ole32.CoTaskMemFree(pfilepath)
     return ret
 
 
@@ -359,37 +354,37 @@ def askopenfilename(
     Returns:
         The file path or None if cancel button selected.
     """
-    with _COM():
-        with _get_pIFileOpenDialog() as pdlg:
-            if initialdir:
-                with _get_pIShellItem() as pitem:
-                    oledll.shell32.SHCreateItemFromParsingName(
-                        initialdir, None, IID_IShellItem, byref(pitem)
-                    )
-                    pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
-
-            if initialfile:
-                pdlg.contents.lpVtbl.contents.SetFileName(pdlg, initialfile)
-
-            if filetypes:
-                rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
-                for i, ft in enumerate(filetypes):
-                    rgSpec[i] = COMDLG_FILTERSPEC.from_tuple(ft)
-                pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
-                pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
-
-            try:
-                pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
-            except OSError:
-                return None
-            with _get_pIShellItem() as pItem:
-                pfilepath = c_wchar_p()
-                pdlg.contents.lpVtbl.contents.GetResult(pdlg, byref(pItem))
-                pItem.contents.lpVtbl.contents.GetDisplayName(
-                    pItem, SIGDN_FILESYSPATH, byref(pfilepath)
+    with _COM(), _get_pIFileOpenDialog() as pdlg:
+        if initialdir:
+            initialdir = abspath(initialdir)
+            with _get_pIShellItem() as pitem:
+                oledll.shell32.SHCreateItemFromParsingName(
+                    initialdir, None, IID_IShellItem, byref(pitem)
                 )
-                ret = pfilepath.value
-                oledll.ole32.CoTaskMemFree(pfilepath)
+                pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
+
+        if initialfile:
+            pdlg.contents.lpVtbl.contents.SetFileName(pdlg, initialfile)
+
+        if filetypes:
+            rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
+            for i, ft in enumerate(filetypes):
+                rgSpec[i] = COMDLG_FILTERSPEC(*ft)
+            pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
+            pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
+
+        try:
+            pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
+        except OSError:
+            return None
+        with _get_pIShellItem() as pItem:
+            pfilepath = c_wchar_p()
+            pdlg.contents.lpVtbl.contents.GetResult(pdlg, byref(pItem))
+            pItem.contents.lpVtbl.contents.GetDisplayName(
+                pItem, SIGDN_FILESYSPATH, byref(pfilepath)
+            )
+            ret = pfilepath.value
+            oledll.ole32.CoTaskMemFree(pfilepath)
     return ret
 
 
@@ -410,49 +405,49 @@ def askopenfilenames(
     Returns:
         The list of file paths or None if cancel button selected.
     """
-    with _COM():
-        with _get_pIFileOpenDialog() as pdlg:
-            options = c_uint32()
-            pdlg.contents.lpVtbl.contents.GetOptions(pdlg, byref(options))
-            pdlg.contents.lpVtbl.contents.SetOptions(
-                pdlg, options.value | FOS_ALLOWMULTISELECT
-            )
+    with _COM(), _get_pIFileOpenDialog() as pdlg:
+        options = c_uint32()
+        pdlg.contents.lpVtbl.contents.GetOptions(pdlg, byref(options))
+        pdlg.contents.lpVtbl.contents.SetOptions(
+            pdlg, options.value | FOS_ALLOWMULTISELECT
+        )
 
-            if initialdir:
+        if initialdir:
+            initialdir = abspath(initialdir)
+            with _get_pIShellItem() as pitem:
+                oledll.shell32.SHCreateItemFromParsingName(
+                    initialdir, None, IID_IShellItem, byref(pitem)
+                )
+                pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
+
+        if initialfile:
+            pdlg.contents.lpVtbl.contents.SetFileName(pdlg, initialfile)
+
+        if filetypes:
+            rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
+            for i, ft in enumerate(filetypes):
+                rgSpec[i] = COMDLG_FILTERSPEC(*ft)
+            pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
+            pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
+
+        try:
+            pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
+        except OSError:
+            return None
+        with _get_pIShellItemArray() as psia:
+            pdlg.contents.lpVtbl.contents.GetResults(pdlg, byref(psia))
+            count = c_uint32()
+            psia.contents.lpVtbl.contents.GetCount(psia, byref(count))
+            ret = []
+            for i in range(count.value):
                 with _get_pIShellItem() as pitem:
-                    oledll.shell32.SHCreateItemFromParsingName(
-                        initialdir, None, IID_IShellItem, byref(pitem)
+                    psia.contents.lpVtbl.contents.GetItemAt(psia, i, byref(pitem))
+                    p_path = c_wchar_p()
+                    pitem.contents.lpVtbl.contents.GetDisplayName(
+                        pitem, SIGDN_FILESYSPATH, byref(p_path)
                     )
-                    pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
-
-            if initialfile:
-                pdlg.contents.lpVtbl.contents.SetFileName(pdlg, initialfile)
-
-            if filetypes:
-                rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
-                for i, ft in enumerate(filetypes):
-                    rgSpec[i] = COMDLG_FILTERSPEC.from_tuple(ft)
-                pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
-                pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
-
-            try:
-                pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
-            except OSError:
-                return None
-            with _get_pIShellItemArray() as psia:
-                pdlg.contents.lpVtbl.contents.GetResults(pdlg, byref(psia))
-                count = c_uint32()
-                psia.contents.lpVtbl.contents.GetCount(psia, byref(count))
-                ret = []
-                for i in range(count.value):
-                    with _get_pIShellItem() as pitem:
-                        psia.contents.lpVtbl.contents.GetItemAt(psia, i, byref(pitem))
-                        p_path = c_wchar_p()
-                        pitem.contents.lpVtbl.contents.GetDisplayName(
-                            pitem, SIGDN_FILESYSPATH, byref(p_path)
-                        )
-                        ret.append(p_path.value)
-                        oledll.ole32.CoTaskMemFree(p_path)
+                    ret.append(p_path.value)
+                    oledll.ole32.CoTaskMemFree(p_path)
     return ret
 
 
@@ -473,35 +468,35 @@ def asksaveasfilename(
     Returns:
         The file path or None if cancel button selected.
     """
-    with _COM():
-        with _get_pIFileSaveDialog() as pdlg:
-            if initialdir:
-                with _get_pIShellItem() as pitem:
-                    oledll.shell32.SHCreateItemFromParsingName(
-                        initialdir, None, IID_IShellItem, byref(pitem)
-                    )
-                    pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
-
-            if initialfile:
-                pdlg.contents.lpVtbl.contents.SetFileName(pdlg, initialfile)
-
-            if filetypes:
-                rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
-                for i, ft in enumerate(filetypes):
-                    rgSpec[i] = COMDLG_FILTERSPEC.from_tuple(ft)
-                pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
-                pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
-
-            try:
-                pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
-            except OSError:
-                return None
-            with _get_pIShellItem() as pItem:
-                pfilepath = c_wchar_p()
-                pdlg.contents.lpVtbl.contents.GetResult(pdlg, byref(pItem))
-                pItem.contents.lpVtbl.contents.GetDisplayName(
-                    pItem, SIGDN_FILESYSPATH, byref(pfilepath)
+    with _COM(), _get_pIFileSaveDialog() as pdlg:
+        if initialdir:
+            initialdir = abspath(initialdir)
+            with _get_pIShellItem() as pitem:
+                oledll.shell32.SHCreateItemFromParsingName(
+                    initialdir, None, IID_IShellItem, byref(pitem)
                 )
-                ret = pfilepath.value
-                oledll.ole32.CoTaskMemFree(pfilepath)
+                pdlg.contents.lpVtbl.contents.SetFolder(pdlg, pitem)
+
+        if initialfile:
+            pdlg.contents.lpVtbl.contents.SetFileName(pdlg, initialfile)
+
+        if filetypes:
+            rgSpec = (COMDLG_FILTERSPEC * len(filetypes))()
+            for i, ft in enumerate(filetypes):
+                rgSpec[i] = COMDLG_FILTERSPEC(*ft)
+            pdlg.contents.lpVtbl.contents.SetFileTypes(pdlg, len(filetypes), rgSpec)
+            pdlg.contents.lpVtbl.contents.SetDefaultExtension(pdlg, "")
+
+        try:
+            pdlg.contents.lpVtbl.contents.Show(pdlg, hwnd)
+        except OSError:
+            return None
+        with _get_pIShellItem() as pItem:
+            pfilepath = c_wchar_p()
+            pdlg.contents.lpVtbl.contents.GetResult(pdlg, byref(pItem))
+            pItem.contents.lpVtbl.contents.GetDisplayName(
+                pItem, SIGDN_FILESYSPATH, byref(pfilepath)
+            )
+            ret = pfilepath.value
+            oledll.ole32.CoTaskMemFree(pfilepath)
     return ret

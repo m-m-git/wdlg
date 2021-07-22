@@ -31,7 +31,6 @@ messagebox.showinfo(title="Hello World", message=dir_path)
 
 ## License
 
-The Unlicense.
+BSD Zero Clause License
 
-This is free and unencumbered software released into the public domain.
-see UNLICENSE.txt.
+see LICENSE.txt.
